@@ -9,84 +9,63 @@ package Begin::Declare;
         /^(my|our)$/i or croak "not exported: $_" for @_;
         @_ or @_ = qw (MY OUR);
         my $caller = caller;
-        Devel::Declare->setup_for ($caller => {
-            map {$_  => {const => \&parser}} @_
-        });
+        Devel::Declare->setup_for(
+            $caller => {map {$_  => {const => \&parser}} @_}
+        );
         no strict 'refs';
         *{$caller.'::'.$_} = sub (@) {} for @_;
     }
 
-    our ($Declarator, $Offset);
+    our $prefix = '';
+    sub get {substr Devel::Declare::get_linestr, length $prefix}
+    sub set {       Devel::Declare::set_linestr $prefix . $_[0]}
 
-    sub skip_declarator {
-        my $linestr = Devel::Declare::get_linestr();
-        my $length  = Devel::Declare::toke_move_past_token($Offset);
-        my $dec     = substr($linestr, $Offset, $length);
-        $Offset += $length;
-        $dec
-    }
-
-    sub skipspace {
-        $Offset += Devel::Declare::toke_skipspace($Offset);
+    sub strip_type {
+        (my $line = get) =~ s/^\s*(\w+)// or croak "error";
+        set $line;
+        $1
     }
 
     sub strip_parens {
-        skipspace;
-        my $linestr = Devel::Declare::get_linestr();
-        if (substr($linestr, $Offset, 1) eq '(') {
-            my $length = Devel::Declare::toke_scan_str($Offset);
-            my $proto  = Devel::Declare::get_lex_stuff();
-            Devel::Declare::clear_lex_stuff();
-
-            $linestr = Devel::Declare::get_linestr();
-            substr($linestr, $Offset, $length) = '';
-            Devel::Declare::set_linestr($linestr);
+        (my $line = get) =~ s/^\s+//;
+        set $line;
+        if ($line =~ /^\(/) {
+            my $length = Devel::Declare::toke_scan_str length $prefix;
+            my $proto  = Devel::Declare::get_lex_stuff;
+                         Devel::Declare::clear_lex_stuff;
+            set substr get, $length;
             return $proto;
         }
         return;
     }
 
-    sub strip_to {
-        my $to = strip_parens;
-        return $to if $to;
-        my $linestr = Devel::Declare::get_linestr();
-        ($to) = substr($linestr, $Offset) =~ /^([\$\%\@]\w+)/;
-        $to or croak "not a variable name: ".substr($linestr, $Offset);
-        substr($linestr, $Offset, length $to) = '';
-        Devel::Declare::set_linestr($linestr);
-        $to
+    sub strip_vars {
+        strip_parens or do {
+            (my $line = get) =~ s/^([\$\%\@]\w+)//
+                or croak "not a variable name: " . get;
+            set $line;
+            $1
+        }
     }
 
     sub strip_equals {
-        skipspace;
-        my $linestr = Devel::Declare::get_linestr();
-        unless (substr($linestr, $Offset, 1) eq '=') {
-            croak "error: next char must be '=': ".substr($linestr, $Offset);
-        }
-        substr($linestr, $Offset, 1) = '';
-        Devel::Declare::set_linestr($linestr);
-        skipspace;
-    }
-
-    sub inject {
-        my $inject  = shift;
-        my $linestr = Devel::Declare::get_linestr;
-        substr($linestr, $Offset, 0) = $inject;
-        Devel::Declare::set_linestr($linestr);
+        (my $line = get) =~ s/^\s*=(?!=)//
+            or croak "syntax error: '=' expected: " . get;
+        set $line;
     }
 
     sub parser {
-        local ($Declarator, $Offset) = @_;
-        my $dec = lc skip_declarator;
-        my $to  = strip_to;
+        local $prefix = substr get, 0, $_[1];
+        my $type = lc strip_type;
+        my $vars = strip_vars;
         strip_equals;
-        inject ";$dec ($to); use Begin::Declare::Lift ($to) = "
+        set "   $type ($vars); use Begin::Declare::Lift ($vars) = " . get;
     }
 
     $INC{'Begin/Declare/Lift.pm'}++;
     sub Begin::Declare::Lift::import {}
 
-    our $VERSION = '0.01';
+    our $VERSION = '0.02';
 
 =head1 NAME
 
@@ -94,7 +73,7 @@ Begin::Declare - compile time my and our
 
 =head1 VERSION
 
-version 0.01
+version 0.02
 
 =head1 SYNOPSIS
 
