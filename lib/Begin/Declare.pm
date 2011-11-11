@@ -34,7 +34,7 @@ package Begin::Declare;
             my $proto  = Devel::Declare::get_lex_stuff;
                          Devel::Declare::clear_lex_stuff;
             set substr get, $length;
-            return $proto;
+            return "($proto)";
         }
         return;
     }
@@ -48,24 +48,17 @@ package Begin::Declare;
         }
     }
 
-    sub strip_equals {
-        (my $line = get) =~ s/^\s*=(?!=)//
-            or croak "syntax error: '=' expected: " . get;
-        set $line;
-    }
-
     sub parser {
         local $prefix = substr get, 0, $_[1];
         my $type = lc strip_type;
         my $vars = strip_vars;
-        strip_equals;
-        set "   $type ($vars); use Begin::Declare::Lift ($vars) = " . get;
+        set "   $type $vars; use Begin::Declare::Lift $vars " . get;
     }
 
     $INC{'Begin/Declare/Lift.pm'}++;
     sub Begin::Declare::Lift::import {}
 
-    our $VERSION = '0.02';
+    our $VERSION = '0.03';
 
 =head1 NAME
 
@@ -73,7 +66,7 @@ Begin::Declare - compile time my and our
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 SYNOPSIS
 
