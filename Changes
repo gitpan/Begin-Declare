@@ -5,3 +5,9 @@ Revision history for Begin-Declare
 
 0.02    11/11/11
         refactor.
+
+0.03    11/11/11
+        refactor.
+
+0.04    11/11/11
+        pod updates, improved error handling, fixed multi-line bug.

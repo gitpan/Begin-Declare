@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 20;
+use Test::More tests => 24;
 
 use lib '../lib';
 
@@ -36,4 +36,40 @@ use Begin::Declare;
     }
     eval 'is $q, "qqq"';
     eval 'is join(" ", sort keys %hash), "a b"';
+}
+
+{
+    {
+        MY
+        (
+            $
+            x
+            ,
+            $
+            y
+            ,
+            $
+            z
+            ,
+        )
+        =
+        (
+            11,
+            22,
+            33,
+        )
+        ;
+        BEGIN {eval 'is "$x $y $z", "11 22 33"'}
+        eval 'is "$x $y $z", "11 22 33"';
+    }
+    {
+        OUR
+        $
+        x1
+        =
+        11
+        ;
+        BEGIN {eval 'is $x1, 11'}
+        eval 'is $x1, 11';
+    }
 }
