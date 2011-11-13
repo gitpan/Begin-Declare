@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 24;
+use Test::More tests => 36;
 
 use lib '../lib';
 
@@ -72,4 +72,32 @@ use Begin::Declare;
         BEGIN {eval 'is $x1, 11'}
         eval 'is $x1, 11';
     }
+}
+
+{
+    my $ret = MY $RET = 5;
+    is $ret, 5;
+    eval 'is $RET, 5';
+    BEGIN {eval 'is $RET, 5'}
+}
+
+{
+    my @ret = MY ($a, $b, @c) = 1 .. 5;
+    is "@ret", '1 2 3 4 5';
+    eval 'is "@c $a $b", "3 4 5 1 2"';
+    BEGIN {eval 'is "@c $a $b", "3 4 5 1 2"'}
+}
+
+{
+    my $ret = OUR $RET = 5;
+    is $ret, 5;
+    eval 'is $RET, 5';
+    BEGIN {eval 'is $RET, 5'}
+}
+
+{
+    my @ret = OUR ($ax, $bx, @cx) = 1 .. 5;
+    is "@ret", '1 2 3 4 5';
+    eval 'is "@cx $ax $bx", "3 4 5 1 2"';
+    BEGIN {eval 'is "@cx $ax $bx", "3 4 5 1 2"'}
 }

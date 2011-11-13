@@ -24,7 +24,7 @@ package Begin::Declare;
             $caller => {map {$_  => {const => \&parser}} @_}
         );
         no strict 'refs';
-        *{$caller.'::'.$_} = sub (@) {} for @_;
+        *{$caller.'::'.$_} = sub (@) {wantarray ? @_ : pop} for @_;
     }
 
     our $prefix = '';
@@ -40,15 +40,14 @@ package Begin::Declare;
     }
 
     sub strip_space {
-        Devel::Declare::toke_skipspace length $prefix;
-        (my $line = get) =~ s/^\s+//;
-        set $line;
+        my $skip = Devel::Declare::toke_skipspace length $prefix;
+        set substr get, $skip;
     }
 
     sub strip_type {
         strip_space;
         get =~ /(my|our)/i or croak "not /my|our/i", get;
-        $prefix .= $1 . ';';
+        $prefix .= $1 . ' ';
         lc $1
     }
 
@@ -86,7 +85,7 @@ package Begin::Declare;
     $INC{'Begin/Declare/Lift.pm'}++;
     sub Begin::Declare::Lift::import {}
 
-    our $VERSION = '0.04';
+    our $VERSION = '0.05';
 
 
 =head1 NAME
@@ -95,7 +94,7 @@ Begin::Declare - compile time my and our
 
 =head1 VERSION
 
-version 0.04
+version 0.05
 
 =head1 SYNOPSIS
 
