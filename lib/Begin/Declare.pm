@@ -12,19 +12,23 @@ package Begin::Declare;
         die "Begin::Declare: $msg '$src at $file line $line.\n"
     }
 
+    my @types = qw (my our);
+    push @types, 'state' if $] >= 5.010;
+    my $type_re = join '|' => @types;
+
     sub import {
         shift;
         for (@_) {
-            /^(my|our)$/i or croak "not exported", $_;
-            /^[MO]/       or croak "first character must be uc in", $_;
+            /^($type_re)$/i or croak "not exported", $_;
+            /^[A-Z]/        or croak "first character must be uc in", $_;
         }
-        @_ or @_ = qw (MY OUR);
+        @_ or @_ = map uc, grep {/my|our/ or $^H{feature_state}} @types;
         my $caller = caller;
         Devel::Declare->setup_for (
             $caller => {map {$_  => {const => \&parser}} @_}
         );
         no strict 'refs';
-        *{$caller.'::'.$_} = sub (@) {wantarray ? @_ : pop} for @_;
+        *{$caller.'::'.$_} = sub (@):lvalue {@_[0 .. $#_]} for @_
     }
 
     our $prefix = '';
@@ -46,7 +50,7 @@ package Begin::Declare;
 
     sub strip_type {
         strip_space;
-        get =~ /(my|our)/i or croak "not /my|our/i", get;
+        get =~ /^($type_re)(?:\b|$)/i or croak "not /$type_re/i", get;
         $prefix .= $1 . ' ';
         lc $1
     }
@@ -69,11 +73,11 @@ package Begin::Declare;
     sub strip_parens {
         if (get =~ /^\(/) {
             my $length = Devel::Declare::toke_scan_str length $prefix;
-            my $proto  = Devel::Declare::get_lex_stuff;
+            my $parens = Devel::Declare::get_lex_stuff;
                          Devel::Declare::clear_lex_stuff;
             set substr get, $length;
-            $proto =~ s/\s+/ /g;
-            return "($proto)"
+            $parens =~ s/\s+/ /g;
+            return "($parens)"
         }
     }
 
@@ -85,16 +89,16 @@ package Begin::Declare;
     $INC{'Begin/Declare/Lift.pm'}++;
     sub Begin::Declare::Lift::import {}
 
-    our $VERSION = '0.05';
+    our $VERSION = '0.06';
 
 
 =head1 NAME
 
-Begin::Declare - compile time my and our
+Begin::Declare - compile time lexical variables
 
 =head1 VERSION
 
-version 0.05
+version 0.06
 
 =head1 SYNOPSIS
 
@@ -117,7 +121,7 @@ just C< use Begin::Declare; > and you can.
 
 is the same as:
 
-    use Begin::Declare qw (MY OUR);
+    use Begin::Declare qw (MY OUR); # and STATE if "use feature 'state';"
 
 you can also write:
 
@@ -147,6 +151,22 @@ works just like the keyword C< our > except it lifts the assignment to compile
 time.
 
     OUR ($x, @xs) = 1 .. 10;  # our ($x, @xs); BEGIN {($x, @xs) = 1 .. 10}
+
+=back
+
+=head2 STATE ... = ...;
+
+=over 4
+
+works better than the keyword C< state > (since it supports list assignment
+and is a proper lvalue (at least on it's rhs)) and it lifts the assignment to
+compile time.
+
+    STATE ($x, @xs) = 1 .. 10;  # state ($x, @xs); BEGIN {($x, @xs) = 1 .. 10}
+
+    for (1 .. 5) {
+        print ++STATE $x = 'a';  # bcdef
+    }
 
 =back
 
